@@ -16,13 +16,15 @@ export async function signUp(
   email: string,
   senha: string,
   nome: string,
-  tipo: TipoPerfil
+  tipo: TipoPerfil,
+  cpf: string,
+  dataNascimento: string
 ) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password: senha,
     options: {
-      data: { nome, tipo },
+      data: { nome, tipo, cpf, data_nascimento: dataNascimento },
     },
   });
   if (error) throw error;

@@ -11,10 +11,13 @@ import {
 } from "react-native";
 import { Link } from "expo-router";
 import { signUp, type TipoPerfil } from "../../src/features/auth/authService";
+import { mascaraCpf, validarCpf } from "../../src/lib/cpf";
 
 export default function CadastroScreen() {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
   const [senha, setSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [tipo, setTipo] = useState<TipoPerfil>("atleta");
@@ -23,9 +26,35 @@ export default function CadastroScreen() {
   const [erro, setErro] = useState<string | null>(null);
   const [confirmacaoPendente, setConfirmacaoPendente] = useState(false);
 
+  function handleCpfChange(valor: string) {
+    setCpf(mascaraCpf(valor));
+  }
+
+  function handleDataNascimentoChange(valor: string) {
+    const d = valor.replace(/\D/g, "").slice(0, 8);
+    if (d.length <= 2) setDataNascimento(d);
+    else if (d.length <= 4) setDataNascimento(`${d.slice(0, 2)}/${d.slice(2)}`);
+    else setDataNascimento(`${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`);
+  }
+
   async function handleCadastrar() {
-    if (!nome.trim() || !email.trim() || !senha || !confirmarSenha) {
+    if (!nome.trim() || !email.trim() || !cpf || !dataNascimento || !senha || !confirmarSenha) {
       setErro("Preencha todos os campos.");
+      return;
+    }
+    if (!validarCpf(cpf)) {
+      setErro("CPF inválido.");
+      return;
+    }
+    const partesData = dataNascimento.split("/");
+    if (partesData.length !== 3 || dataNascimento.length !== 10) {
+      setErro("Data de nascimento inválida.");
+      return;
+    }
+    // Converte DD/MM/YYYY → YYYY-MM-DD para o banco
+    const dataIso = `${partesData[2]}-${partesData[1]}-${partesData[0]}`;
+    if (isNaN(Date.parse(dataIso))) {
+      setErro("Data de nascimento inválida.");
       return;
     }
     if (senha !== confirmarSenha) {
@@ -39,7 +68,7 @@ export default function CadastroScreen() {
     setErro(null);
     setCarregando(true);
     try {
-      const data = await signUp(email.trim(), senha, nome.trim(), tipo);
+      const data = await signUp(email.trim(), senha, nome.trim(), tipo, cpf, dataIso);
       if (!data.session) {
         // Confirmação de e-mail ativa: sessão só existe após confirmar
         setConfirmacaoPendente(true);
@@ -123,6 +152,36 @@ export default function CadastroScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+              />
+            </View>
+
+            <View>
+              <Text className="text-sm font-medium text-gray-700 mb-1">
+                CPF
+              </Text>
+              <TextInput
+                className="border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 bg-gray-50"
+                placeholder="000.000.000-00"
+                placeholderTextColor="#9ca3af"
+                value={cpf}
+                onChangeText={handleCpfChange}
+                keyboardType="numeric"
+                maxLength={14}
+              />
+            </View>
+
+            <View>
+              <Text className="text-sm font-medium text-gray-700 mb-1">
+                Data de nascimento
+              </Text>
+              <TextInput
+                className="border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 bg-gray-50"
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#9ca3af"
+                value={dataNascimento}
+                onChangeText={handleDataNascimentoChange}
+                keyboardType="numeric"
+                maxLength={10}
               />
             </View>
 
